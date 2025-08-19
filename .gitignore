@@ -1,0 +1,23 @@
+# PDFs folder (contain user data)
+/pdfs/
+*.pdf
+
+# Embedding cache file
+embedding_cache.json
+
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+venv/
+env/
+.env/
+
+# IDE specific files
+.vscode/
+.idea/
+
+# Logs
+*.log

@@ -1,0 +1,361 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot de Estudos com PDFs</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        header {
+            background: #4a6fc7;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            display: flex;
+            min-height: 500px;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: #f5f7fb;
+            padding: 20px;
+            border-right: 1px solid #e0e6ef;
+        }
+        
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 450px;
+        }
+        
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 16px;
+            border-radius: 18px;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+        
+        .user-message {
+            background: #e3eeff;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+        
+        .bot-message {
+            background: #f0f4f9;
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .input-area {
+            padding: 20px;
+            border-top: 1px solid #e0e6ef;
+            display: flex;
+            gap: 10px;
+        }
+        
+        input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 1px solid #d0d9e6;
+            border-radius: 24px;
+            font-size: 1rem;
+            outline: none;
+        }
+        
+        input:focus {
+            border-color: #4a6fc7;
+            box-shadow: 0 0 0 2px rgba(74, 111, 199, 0.2);
+        }
+        
+        button {
+            background: #4a6fc7;
+            color: white;
+            border: none;
+            border-radius: 24px;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        
+        button:hover {
+            background: #3a5bb7;
+        }
+        
+        .btn-load {
+            background: #5cb85c;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        
+        .btn-load:hover {
+            background: #4ca64c;
+        }
+        
+        .cache-info {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .info-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #4a6fc7;
+        }
+        
+        .typing-indicator {
+            display: none;
+            padding: 12px 16px;
+            background: #f0f4f9;
+            border-radius: 18px;
+            margin-bottom: 15px;
+            width: fit-content;
+            border-bottom-left-radius: 5px;
+        }
+        
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: #7a92c7;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1); }
+        }
+        
+        .timestamp {
+            font-size: 0.7rem;
+            color: #8898aa;
+            text-align: right;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Chatbot de Estudos</h1>
+            <p class="subtitle">Sistema de consulta a PDFs com Ollama e Cache de Embeddings</p>
+        </header>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <button class="btn-load" id="loadBtn">Carregar PDFs</button>
+                <div class="cache-info">
+                    <div class="info-title">Informações do Cache</div>
+                    <div id="cacheSize">Embeddings em cache: 0</div>
+                    <div id="docCount">Documentos carregados: 0</div>
+                </div>
+                <div class="cache-info" style="margin-top: 15px;">
+                    <div class="info-title">Instruções</div>
+                    <p>1. Coloque seus PDFs na pasta "pdfs/"</p>
+                    <p>2. Clique em "Carregar PDFs"</p>
+                    <p>3. Faça perguntas sobre o conteúdo</p>
+                </div>
+            </div>
+            
+            <div class="chat-area">
+                <div class="messages" id="messages">
+                    <div class="message bot-message">
+                        Olá! Sou seu assistente de estudos. Carregue seus PDFs e faça perguntas sobre o conteúdo.
+                    </div>
+                </div>
+                
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+                
+                <div class="input-area">
+                    <input type="text" id="questionInput" placeholder="Digite sua pergunta..." autocomplete="off">
+                    <button id="askBtn">Enviar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const messagesContainer = document.getElementById('messages');
+            const questionInput = document.getElementById('questionInput');
+            const askBtn = document.getElementById('askBtn');
+            const loadBtn = document.getElementById('loadBtn');
+            const typingIndicator = document.getElementById('typingIndicator');
+            const cacheSizeElement = document.getElementById('cacheSize');
+            const docCountElement = document.getElementById('docCount');
+            
+            // Função para adicionar mensagem ao chat
+            function addMessage(text, isUser = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = isUser ? 'message user-message' : 'message bot-message';
+                messageDiv.textContent = text;
+                
+                // Adiciona timestamp
+                const timestamp = document.createElement('div');
+                timestamp.className = 'timestamp';
+                timestamp.textContent = new Date().toLocaleTimeString();
+                messageDiv.appendChild(timestamp);
+                
+                messagesContainer.appendChild(messageDiv);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+            
+            // Função para atualizar informações do cache
+            function updateCacheInfo() {
+                fetch('/cache_info')
+                    .then(response => response.json())
+                    .then(data => {
+                        cacheSizeElement.textContent = `Embeddings em cache: ${data.cache_size}`;
+                        docCountElement.textContent = `Documentos carregados: ${data.documents_loaded}`;
+                    });
+            }
+            
+            // Evento para enviar pergunta
+            askBtn.addEventListener('click', function() {
+                const question = questionInput.value.trim();
+                if (question) {
+                    addMessage(question, true);
+                    questionInput.value = '';
+                    
+                    // Mostra indicador de digitação
+                    typingIndicator.style.display = 'block';
+                    messagesContainer.scrollTop = messagesContainer.scrollHeight;
+                    
+                    // Envia a pergunta para o servidor
+                    fetch('/ask', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ question: question })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Esconde indicador de digitação
+                        typingIndicator.style.display = 'none';
+                        
+                        if (data.error) {
+                            addMessage(`Erro: ${data.error}`);
+                        } else {
+                            addMessage(data.answer);
+                        }
+                        
+                        // Atualiza informações do cache
+                        updateCacheInfo();
+                    })
+                    .catch(error => {
+                        typingIndicator.style.display = 'none';
+                        addMessage('Erro de conexão com o servidor');
+                    });
+                }
+            });
+            
+            // Evento para carregar documentos
+            loadBtn.addEventListener('click', function() {
+                loadBtn.textContent = 'Carregando...';
+                loadBtn.disabled = true;
+                
+                fetch('/load', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        addMessage(data.message);
+                    } else {
+                        addMessage(`Erro: ${data.message}`);
+                    }
+                    
+                    loadBtn.textContent = 'Carregar PDFs';
+                    loadBtn.disabled = false;
+                    
+                    // Atualiza informações do cache
+                    updateCacheInfo();
+                })
+                .catch(error => {
+                    addMessage('Erro de conexão com o servidor');
+                    loadBtn.textContent = 'Carregar PDFs';
+                    loadBtn.disabled = false;
+                });
+            });
+            
+            // Permitir enviar com Enter
+            questionInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    askBtn.click();
+                }
+            });
+            
+            // Atualizar informações do cache ao carregar a página
+            updateCacheInfo();
+        });
+    </script>
+</body>
+</html>
